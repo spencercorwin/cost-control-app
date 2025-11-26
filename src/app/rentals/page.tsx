@@ -74,38 +74,6 @@ export default async function Locations() {
           </p>
         </div>
 
-        {/* Locations Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Select a Neighborhood</CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
-                    Location
-                  </th>
-                  <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
-                    Average Rent
-                  </th>
-                  <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
-                    Properties
-                  </th>
-                  <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
-                    Highlights
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {locations.map((location) => (
-                  <LocationTableRow key={location.id} location={location} />
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
@@ -139,6 +107,38 @@ export default async function Locations() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Locations Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Select a Neighborhood</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    Location
+                  </th>
+                  <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    Average Rent
+                  </th>
+                  <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    Properties
+                  </th>
+                  <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    Highlights
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {locations.map((location) => (
+                  <LocationTableRow key={location.id} location={location} />
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

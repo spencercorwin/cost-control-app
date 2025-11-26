@@ -105,6 +105,13 @@ export default function Income() {
   React.useEffect(() => {
     const calculations = loadSavedCalculations();
     setSavedCalculations(calculations);
+    // Load the first saved calculation if it exists
+    if (calculations.length > 0) {
+      setCalculationName(calculations[0].name);
+      setAnnualSalary(calculations[0].annualSalary.toString());
+      setMonthlyExpenses(calculations[0].monthlyExpenses.toString());
+      setSelectedCalculation(calculations[0].name);
+    }
   }, []);
 
   const calculations = useMemo(() => {

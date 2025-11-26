@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     latitude: z.string(),
     longitude: z.string(),
     propertyAddress: z.string().min(1),
+    url: z.url(),
   });
   // check if this location id already exists
   const maybeExistingLocation = await db
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
       latitude: parsedBody.latitude.toString(),
       longitude: parsedBody.longitude.toString(),
       notes: parsedBody.description || "",
+      url: parsedBody.url,
     })
     .returning();
 
