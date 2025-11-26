@@ -13,6 +13,10 @@ export const rentalsTable = pgTable("rentals", {
   locationId: varchar()
     .notNull()
     .references(() => locationsTable.id),
+  propertyAddress: varchar({ length: 255 }).notNull(),
+  url: varchar().notNull().default(""),
+  latitude: varchar({ length: 50 }).notNull(),
+  longitude: varchar({ length: 50 }).notNull(),
   propertyName: varchar().notNull(),
   notes: varchar().notNull(),
 });
@@ -27,7 +31,6 @@ export const rentalPricesTable = pgTable("rental_prices", {
     .references(() => locationsTable.id),
   sizeSqFt: integer().notNull(),
   monthlyRent: integer().notNull(),
-  dateAvailable: varchar({ length: 50 }).notNull(),
-  pricePerMonth: integer().notNull(),
-  dateRecorded: varchar({ length: 50 }).notNull(),
+  dateAvailable: varchar({ length: 50 }),
+  dateRecorded: integer().notNull(),
 });

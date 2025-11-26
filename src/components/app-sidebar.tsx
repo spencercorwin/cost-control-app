@@ -43,8 +43,13 @@ const data = {
     },
     {
       title: "New Location",
-      url: "/rentals/create",
+      url: "/rentals/create-location",
       icon: IconChartBar,
+    },
+    {
+      title: "New Rental",
+      url: "/rentals/create-rental",
+      icon: IconFolder,
     },
   ],
 };

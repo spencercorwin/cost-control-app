@@ -1,96 +1,66 @@
-"use client";
-
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LocationTableRow } from "@/components/location-table-row";
+import { db } from "@/lib/db";
+import {
+  locationsTable,
+  rentalsTable,
+  rentalPricesTable,
+} from "@/lib/db/schema";
+import { sql, eq } from "drizzle-orm";
+import { formatPrice } from "@/lib/formatPrice";
 
-type Location = {
+type LocationWithData = {
   id: string;
   name: string;
-  description: string;
+  notes: string;
   averageRent: number;
   propertyCount: number;
-  coordinates: { lat: number; lng: number };
   highlights: string[];
 };
 
-// Seattle neighborhood data
-const seattleLocations: Location[] = [
-  {
-    id: "south-lake-union",
-    name: "South Lake Union",
-    description:
-      "Tech hub with modern amenities, close to Amazon and other major companies.",
-    averageRent: 3200,
-    propertyCount: 45,
-    coordinates: { lat: 47.6205, lng: -122.337 },
-    highlights: [
-      "Tech companies nearby",
-      "Modern apartments",
-      "Great dining scene",
-    ],
-  },
-  {
-    id: "kirkland",
-    name: "Kirkland",
-    description:
-      "Quiet suburban area across Lake Washington with waterfront views.",
-    averageRent: 2800,
-    propertyCount: 32,
-    coordinates: { lat: 47.6815, lng: -122.2087 },
-    highlights: ["Lakefront living", "Family-friendly", "Good schools"],
-  },
-  {
-    id: "west-seattle",
-    name: "West Seattle",
-    description:
-      "Beach community with a small-town feel and great views of downtown.",
-    averageRent: 2400,
-    propertyCount: 28,
-    coordinates: { lat: 47.565, lng: -122.385 },
-    highlights: ["Beach access", "Community feel", "Affordable options"],
-  },
-  {
-    id: "bellevue",
-    name: "Bellevue",
-    description: "Upscale suburban city with excellent shopping and dining.",
-    averageRent: 3500,
-    propertyCount: 38,
-    coordinates: { lat: 47.6101, lng: -122.2015 },
-    highlights: ["Luxury living", "Shopping centers", "Top-rated schools"],
-  },
-  {
-    id: "downtown",
-    name: "Downtown Seattle",
-    description:
-      "Urban core with high-rise living, entertainment, and business district.",
-    averageRent: 3800,
-    propertyCount: 67,
-    coordinates: { lat: 47.6062, lng: -122.3321 },
-    highlights: ["City center", "High-rise living", "Public transit"],
-  },
-];
+async function getLocationsWithData(): Promise<LocationWithData[]> {
+  // Get all locations with rental counts and average prices
+  const locationsData = await db
+    .select({
+      id: locationsTable.id,
+      name: locationsTable.name,
+      notes: locationsTable.notes,
+      propertyCount: sql<number>`COUNT(DISTINCT ${rentalsTable.id})::int`,
+      averageRent: sql<number>`COALESCE(AVG(${rentalPricesTable.monthlyRent})::int, 0)`,
+    })
+    .from(locationsTable)
+    .leftJoin(rentalsTable, eq(locationsTable.id, rentalsTable.locationId))
+    .leftJoin(
+      rentalPricesTable,
+      eq(locationsTable.id, rentalPricesTable.locationId),
+    )
+    .groupBy(locationsTable.id, locationsTable.name, locationsTable.notes);
 
-export default function Rentals() {
-  const router = useRouter();
+  // Add highlights based on notes (you can customize this logic)
+  return locationsData.map((location) => ({
+    ...location,
+    highlights: location.notes
+      ? location.notes
+          .split(",")
+          .map((h) => h.trim())
+          .filter(Boolean)
+          .slice(0, 3)
+      : [],
+  }));
+}
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
+export default async function Locations() {
+  const locations = await getLocationsWithData();
 
-  const handleLocationClick = (locationId: string) => {
-    router.push(`/rentals/location/${locationId}`);
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent, locationId: string) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleLocationClick(locationId);
-    }
-  };
+  const totalProperties = locations.reduce(
+    (sum, loc) => sum + loc.propertyCount,
+    0,
+  );
+  const overallAverageRent =
+    locations.length > 0
+      ? locations.reduce((sum, loc) => sum + loc.averageRent, 0) /
+        locations.length
+      : 0;
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black p-6">
@@ -128,44 +98,8 @@ export default function Rentals() {
                 </tr>
               </thead>
               <tbody>
-                {seattleLocations.map((location) => (
-                  <tr
-                    key={location.id}
-                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer focus:bg-gray-50 dark:focus:bg-gray-800/50 transition-colors"
-                    onClick={() => handleLocationClick(location.id)}
-                    onKeyDown={(e) => handleKeyDown(e, location.id)}
-                    tabIndex={0}
-                    aria-label={`View rentals in ${location.name}`}
-                  >
-                    <td className="py-4 px-4">
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-gray-100">
-                          {location.name}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          {location.description}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 font-semibold text-green-600 dark:text-green-400">
-                      {formatPrice(location.averageRent)}
-                    </td>
-                    <td className="py-4 px-4 text-gray-900 dark:text-gray-100">
-                      {location.propertyCount} available
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex flex-wrap gap-1">
-                        {location.highlights.map((highlight) => (
-                          <span
-                            key={highlight}
-                            className="inline-block px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full"
-                          >
-                            {highlight}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
+                {locations.map((location) => (
+                  <LocationTableRow key={location.id} location={location} />
                 ))}
               </tbody>
             </table>
@@ -177,7 +111,7 @@ export default function Rentals() {
           <Card>
             <CardContent className="p-6 text-center">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {seattleLocations.length}
+                {locations.length}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Neighborhoods
@@ -187,10 +121,7 @@ export default function Rentals() {
           <Card>
             <CardContent className="p-6 text-center">
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {seattleLocations.reduce(
-                  (sum, loc) => sum + loc.propertyCount,
-                  0,
-                )}
+                {totalProperties}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Total Properties
@@ -200,12 +131,7 @@ export default function Rentals() {
           <Card>
             <CardContent className="p-6 text-center">
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {formatPrice(
-                  seattleLocations.reduce(
-                    (sum, loc) => sum + loc.averageRent,
-                    0,
-                  ) / seattleLocations.length,
-                )}
+                {formatPrice(overallAverageRent)}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Average Rent
