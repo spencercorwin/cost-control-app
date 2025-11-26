@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RentalTableRow } from "@/components/rental-table-row";
 import { notFound } from "next/navigation";
 import { formatPrice } from "@/lib/formatPrice";
+import { RentalsMap } from "@/components/rentals-map";
 
 type RentalWithLatestPrice = {
   id: string;
@@ -16,6 +17,8 @@ type RentalWithLatestPrice = {
   propertyAddress: string;
   url: string;
   notes: string;
+  latitude: string;
+  longitude: string;
   latestPrice?: {
     monthlyRent: number;
     sizeSqFt: number;
@@ -59,6 +62,8 @@ async function getLocationWithRentals(locationId: string) {
         propertyAddress: rental.propertyAddress,
         url: rental.url,
         notes: rental.notes,
+        latitude: rental.latitude,
+        longitude: rental.longitude,
         latestPrice:
           latestPrices.length > 0
             ? {
@@ -157,6 +162,27 @@ export default async function LocationPage({
             </CardContent>
           </Card>
         </div>
+
+        {/* Map Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Map View</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RentalsMap
+              rentals={rentals.map((r) => ({
+                id: r.id,
+                propertyName: r.propertyName,
+                propertyAddress: r.propertyAddress,
+                url: r.url,
+                latitude: r.latitude,
+                longitude: r.longitude,
+              }))}
+              centerLat={Number.parseFloat(location.latitude)}
+              centerLng={Number.parseFloat(location.longitude)}
+            />
+          </CardContent>
+        </Card>
 
         {/* Rentals Table */}
         <Card>
