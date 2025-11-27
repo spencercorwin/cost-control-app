@@ -11,7 +11,7 @@ import { notFound } from "next/navigation";
 import { formatPrice } from "@/lib/formatPrice";
 import { RentalsMap } from "@/components/rentals-map";
 
-type RentalWithLatestPrice = {
+type RentalWithAveragePrice = {
   id: string;
   propertyName: string;
   propertyAddress: string;
@@ -19,11 +19,9 @@ type RentalWithLatestPrice = {
   notes: string;
   latitude: string;
   longitude: string;
-  latestPrice?: {
+  averagePrice?: {
     monthlyRent: number;
     sizeSqFt: number;
-    dateAvailable: string | null;
-    dateRecorded: number;
   } | null;
 };
 
@@ -46,15 +44,24 @@ async function getLocationWithRentals(locationId: string) {
     .from(rentalsTable)
     .where(eq(rentalsTable.locationId, locationId));
 
-  // For each rental, get the latest price
-  const rentalsWithPrices: RentalWithLatestPrice[] = await Promise.all(
+  // For each rental, calculate the average price
+  const rentalsWithPrices: RentalWithAveragePrice[] = await Promise.all(
     rentals.map(async (rental) => {
-      const latestPrices = await db
+      const prices = await db
         .select()
         .from(rentalPricesTable)
-        .where(eq(rentalPricesTable.rentalId, rental.id))
-        .orderBy(desc(rentalPricesTable.dateRecorded))
-        .limit(1);
+        .where(eq(rentalPricesTable.rentalId, rental.id));
+
+      const averagePrice =
+        prices.length > 0
+          ? {
+              monthlyRent:
+                prices.reduce((sum, p) => sum + p.monthlyRent, 0) /
+                prices.length,
+              sizeSqFt:
+                prices.reduce((sum, p) => sum + p.sizeSqFt, 0) / prices.length,
+            }
+          : null;
 
       return {
         id: rental.id,
@@ -64,15 +71,7 @@ async function getLocationWithRentals(locationId: string) {
         notes: rental.notes,
         latitude: rental.latitude,
         longitude: rental.longitude,
-        latestPrice:
-          latestPrices.length > 0
-            ? {
-                monthlyRent: latestPrices[0].monthlyRent,
-                sizeSqFt: latestPrices[0].sizeSqFt,
-                dateAvailable: latestPrices[0].dateAvailable,
-                dateRecorded: latestPrices[0].dateRecorded,
-              }
-            : null,
+        averagePrice,
       };
     }),
   );
@@ -100,18 +99,18 @@ export default async function LocationPage({
   const { location, rentals } = data;
 
   // Calculate stats
-  const rentalsWithPrices = rentals.filter((r) => r.latestPrice);
+  const rentalsWithPrices = rentals.filter((r) => r.averagePrice);
   const averageRent =
     rentalsWithPrices.length > 0
       ? rentalsWithPrices.reduce(
-          (sum, r) => sum + (r.latestPrice?.monthlyRent || 0),
+          (sum, r) => sum + (r.averagePrice?.monthlyRent || 0),
           0,
         ) / rentalsWithPrices.length
       : 0;
   const averageSize =
     rentalsWithPrices.length > 0
       ? rentalsWithPrices.reduce(
-          (sum, r) => sum + (r.latestPrice?.sizeSqFt || 0),
+          (sum, r) => sum + (r.averagePrice?.sizeSqFt || 0),
           0,
         ) / rentalsWithPrices.length
       : 0;
@@ -198,10 +197,7 @@ export default async function LocationPage({
                       Property
                     </th>
                     <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
-                      Latest Price
-                    </th>
-                    <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
-                      Availability
+                      Average Price
                     </th>
                     <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
                       Link

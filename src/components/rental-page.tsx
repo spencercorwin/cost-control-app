@@ -12,8 +12,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { formatPrice } from "@/lib/formatPrice";
 import { formatDate } from "@/lib/formatDate";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from "recharts";
 import {
   ExternalLink,
   RefreshCw,
@@ -59,6 +72,37 @@ type Rental = {
   propertyName: string;
   notes: string;
 };
+
+function prepareChartData(prices: RentalPrice[]) {
+  // Group prices by date and calculate average rent for each date
+  const dateMap = new Map<number, { totalRent: number; count: number }>();
+
+  for (const price of prices) {
+    if (!dateMap.has(price.dateRecorded)) {
+      dateMap.set(price.dateRecorded, { totalRent: 0, count: 0 });
+    }
+    const entry = dateMap.get(price.dateRecorded);
+    if (entry) {
+      entry.totalRent += price.monthlyRent;
+      entry.count += 1;
+    }
+  }
+
+  // Convert to array and calculate averages
+  const chartData = Array.from(dateMap.entries())
+    .map(([timestamp, { totalRent, count }]) => ({
+      date: new Date(timestamp * 1000).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      timestamp,
+      avgRent: Math.round(totalRent / count),
+    }))
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  return chartData;
+}
 
 function groupPricesByUnit(prices: RentalPrice[]): GroupedUnit[] {
   // Sort prices by date recorded (newest first)
@@ -111,6 +155,7 @@ export default function RentalPage({
   const [isScraing, setIsScraping] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const groupedUnits = groupPricesByUnit(prices);
+  const chartData = prepareChartData(prices);
 
   // Calculate summary statistics
   const avgRent =
@@ -252,6 +297,62 @@ export default function RentalPage({
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Price History Chart */}
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Average Rent Over Time</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer
+              config={{
+                avgRent: {
+                  label: "Average Rent",
+                  color: "hsl(var(--chart-1))",
+                },
+              }}
+              className="h-[300px]"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-muted"
+                  />
+                  <XAxis
+                    dataKey="date"
+                    className="text-xs"
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    className="text-xs"
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                  />
+                  <ChartTooltip
+                    content={<ChartTooltipContent />}
+                    formatter={(value) => [
+                      `$${value.toLocaleString()}`,
+                      "Average Rent",
+                    ]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="avgRent"
+                    stroke="hsl(var(--chart-1))"
+                    strokeWidth={2}
+                    dot={{ fill: "hsl(var(--chart-1))", r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
       )}

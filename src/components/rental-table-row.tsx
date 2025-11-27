@@ -11,11 +11,9 @@ type RentalTableRowProps = {
     propertyAddress: string;
     url: string;
     notes: string;
-    latestPrice?: {
+    averagePrice?: {
       monthlyRent: number;
       sizeSqFt: number;
-      dateAvailable: string | null;
-      dateRecorded: number;
     } | null;
   };
 };
@@ -58,33 +56,19 @@ export function RentalTableRow({ rental }: RentalTableRowProps) {
         </div>
       </td>
       <td className="py-4 px-4">
-        {rental.latestPrice ? (
+        {rental.averagePrice ? (
           <div>
             <div className="font-semibold text-green-600 dark:text-green-400">
-              {formatPrice(rental.latestPrice.monthlyRent)}
+              {formatPrice(rental.averagePrice.monthlyRent)}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-              {rental.latestPrice.sizeSqFt} sq ft
+              {Math.round(rental.averagePrice.sizeSqFt)} sq ft
             </div>
           </div>
         ) : (
           <span className="text-gray-400 dark:text-gray-600">
             No price data
           </span>
-        )}
-      </td>
-      <td className="py-4 px-4">
-        {rental.latestPrice ? (
-          <div>
-            <div className="text-sm text-gray-900 dark:text-gray-100">
-              {rental.latestPrice.dateAvailable || "Not specified"}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-              Recorded: {formatDate(rental.latestPrice.dateRecorded)}
-            </div>
-          </div>
-        ) : (
-          <span className="text-gray-400 dark:text-gray-600">—</span>
         )}
       </td>
       <td className="py-4 px-4">
