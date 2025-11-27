@@ -1,4 +1,4 @@
-import { integer, pgTable, varchar } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, boolean } from "drizzle-orm/pg-core";
 
 export const locationsTable = pgTable("locations", {
   id: varchar().primaryKey(),
@@ -33,4 +33,8 @@ export const rentalPricesTable = pgTable("rental_prices", {
   monthlyRent: integer().notNull(),
   dateAvailable: varchar({ length: 50 }),
   dateRecorded: integer().notNull(),
+  unitType: varchar({ length: 100 }).notNull().default(""),
+  notes: varchar().notNull().default(""),
+  floor: integer(),
+  isIncomeRestricted: boolean(),
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate } from "@/lib/formatDate";
 import { formatPrice } from "@/lib/formatPrice";
 import { useRouter } from "next/navigation";
 
