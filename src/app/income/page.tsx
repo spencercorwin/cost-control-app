@@ -158,7 +158,7 @@ export default function Income() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black p-6">
-      <div className="mx-auto max-w-4xl space-y-4">
+      <div className="flex flex-col gap-4 max-w-6xl mx-auto">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Income & Expense Calculator
