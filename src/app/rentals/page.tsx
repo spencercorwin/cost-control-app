@@ -56,10 +56,13 @@ export default async function Locations() {
     (sum, loc) => sum + loc.propertyCount,
     0,
   );
+  const locationsWithProperties = locations.filter(
+    (loc) => loc.propertyCount > 0,
+  );
   const overallAverageRent =
-    locations.length > 0
-      ? locations.reduce((sum, loc) => sum + loc.averageRent, 0) /
-        locations.length
+    locationsWithProperties.length > 0
+      ? locationsWithProperties.reduce((sum, loc) => sum + loc.averageRent, 0) /
+        locationsWithProperties.length
       : 0;
 
   return (
@@ -69,9 +72,6 @@ export default async function Locations() {
           <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Seattle Rental Locations
           </h1>
-          <p className="text-muted-foreground">
-            Explore rental properties in Seattle's most popular neighborhoods
-          </p>
         </div>
 
         {/* Personal Lease Info */}

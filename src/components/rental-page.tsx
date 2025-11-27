@@ -32,9 +32,15 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronRight,
+  MapPin,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+  APIProvider,
+  Map as GoogleMap,
+  AdvancedMarker,
+} from "@vis.gl/react-google-maps";
 
 type RentalPrice = {
   id: number;
@@ -269,6 +275,50 @@ export default function RentalPage({
                 View Original Listing
                 <ExternalLink className="h-4 w-4" />
               </a>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Map View */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Location
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {rental.latitude && rental.longitude ? (
+            <APIProvider
+              apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""}
+            >
+              <div className="w-full h-[400px] rounded-lg overflow-hidden border">
+                <GoogleMap
+                  defaultCenter={{
+                    lat: Number.parseFloat(rental.latitude),
+                    lng: Number.parseFloat(rental.longitude),
+                  }}
+                  defaultZoom={15}
+                  mapId="rental_detail_map"
+                  gestureHandling="greedy"
+                  disableDefaultUI={false}
+                >
+                  <AdvancedMarker
+                    position={{
+                      lat: Number.parseFloat(rental.latitude),
+                      lng: Number.parseFloat(rental.longitude),
+                    }}
+                    title={rental.propertyName}
+                  />
+                </GoogleMap>
+              </div>
+            </APIProvider>
+          ) : (
+            <div className="w-full h-[400px] rounded-lg border bg-muted flex items-center justify-center">
+              <p className="text-muted-foreground">
+                No location coordinates available
+              </p>
             </div>
           )}
         </CardContent>
