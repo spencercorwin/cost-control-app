@@ -74,6 +74,106 @@ export default async function Locations() {
           </p>
         </div>
 
+        {/* Personal Lease Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>My Lease Comparison</span>
+              <span className="text-sm font-normal text-muted-foreground">
+                Lease ends 2/3/26
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    Type
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    Rent
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    Tech Package
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    Improvement Fee
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    Parking
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Current
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right text-gray-700 dark:text-gray-300">
+                    {formatPrice(2206)}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right text-gray-700 dark:text-gray-300">
+                    {formatPrice(25)}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right text-gray-700 dark:text-gray-300">
+                    {formatPrice(2)}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right text-gray-700 dark:text-gray-300">
+                    {formatPrice(175)}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right font-semibold text-gray-900 dark:text-gray-100">
+                    {formatPrice(2408)}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Renewal
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right text-gray-700 dark:text-gray-300">
+                    {formatPrice(2270.74)}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right text-gray-700 dark:text-gray-300">
+                    {formatPrice(25)}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right text-gray-700 dark:text-gray-300">
+                    {formatPrice(2)}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right text-gray-700 dark:text-gray-300">
+                    {formatPrice(200)}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right font-semibold text-gray-900 dark:text-gray-100">
+                    {formatPrice(2497.74)}
+                  </td>
+                </tr>
+                <tr className="bg-amber-50 dark:bg-amber-950/20">
+                  <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Difference
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right font-medium text-amber-700 dark:text-amber-400">
+                    +{formatPrice(64.74)}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right text-gray-700 dark:text-gray-300">
+                    —
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right text-gray-700 dark:text-gray-300">
+                    —
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right font-medium text-amber-700 dark:text-amber-400">
+                    +{formatPrice(25)}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-right font-semibold text-amber-800 dark:text-amber-400">
+                    +{formatPrice(89.74)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
