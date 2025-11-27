@@ -15,6 +15,7 @@ type RentalTableRowProps = {
       monthlyRent: number;
       sizeSqFt: number;
     } | null;
+    pricePerSqFt?: number | null;
   };
 };
 
@@ -69,6 +70,15 @@ export function RentalTableRow({ rental }: RentalTableRowProps) {
           <span className="text-gray-400 dark:text-gray-600">
             No price data
           </span>
+        )}
+      </td>
+      <td className="py-4 px-4">
+        {rental.pricePerSqFt ? (
+          <div className="font-semibold text-purple-600 dark:text-purple-400">
+            {formatPrice(rental.pricePerSqFt)}/sq ft
+          </div>
+        ) : (
+          <span className="text-gray-400 dark:text-gray-600">—</span>
         )}
       </td>
       <td className="py-4 px-4">

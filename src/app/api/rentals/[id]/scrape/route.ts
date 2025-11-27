@@ -139,6 +139,7 @@ export async function POST(
     const dateRecorded = Math.floor(Date.now() / 1000);
     const insertPromises = units
       .filter((unit) => unit.is_income_restricted !== true)
+      .filter((unit) => unit.monthly_rent > 0)
       .map((unit) =>
         db.insert(rentalPricesTable).values({
           rentalId: id,

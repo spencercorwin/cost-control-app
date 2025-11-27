@@ -23,6 +23,7 @@ type RentalWithAveragePrice = {
     monthlyRent: number;
     sizeSqFt: number;
   } | null;
+  pricePerSqFt?: number | null;
 };
 
 async function getLocationWithRentals(locationId: string) {
@@ -63,6 +64,11 @@ async function getLocationWithRentals(locationId: string) {
             }
           : null;
 
+      const pricePerSqFt =
+        averagePrice && averagePrice.sizeSqFt > 0
+          ? averagePrice.monthlyRent / averagePrice.sizeSqFt
+          : null;
+
       return {
         id: rental.id,
         propertyName: rental.propertyName,
@@ -72,6 +78,7 @@ async function getLocationWithRentals(locationId: string) {
         latitude: rental.latitude,
         longitude: rental.longitude,
         averagePrice,
+        pricePerSqFt,
       };
     }),
   );
@@ -198,6 +205,9 @@ export default async function LocationPage({
                     </th>
                     <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
                       Average Price
+                    </th>
+                    <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
+                      Price/sq ft
                     </th>
                     <th className="text-left py-3 px-4 font-semibold text-sm text-gray-900 dark:text-gray-100">
                       Link
