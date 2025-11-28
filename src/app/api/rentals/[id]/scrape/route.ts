@@ -60,6 +60,7 @@ export async function POST(
 
     // Scrape the URL using Firecrawl with extraction schema
     const scrapeResult = await firecrawl.scrape(rentalUrl, {
+      waitFor: 2000,
       formats: [
         {
           type: "json",

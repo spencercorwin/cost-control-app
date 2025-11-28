@@ -107,6 +107,10 @@ export default async function LocationPage({
 
   // Calculate stats
   const rentalsWithPrices = rentals.filter((r) => r.averagePrice);
+  const sortedRentals = rentalsWithPrices.sort(
+    (a, b) =>
+      (a.averagePrice?.monthlyRent || 0) - (b.averagePrice?.monthlyRent || 0),
+  );
   const averageRent =
     rentalsWithPrices.length > 0
       ? rentalsWithPrices.reduce(
@@ -215,7 +219,7 @@ export default async function LocationPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {rentals.map((rental) => (
+                  {sortedRentals.map((rental) => (
                     <RentalTableRow key={rental.id} rental={rental} />
                   ))}
                 </tbody>
