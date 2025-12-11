@@ -6,16 +6,6 @@ import { eq } from "drizzle-orm";
 import firecrawl from "@/lib/firecrawl/index";
 import z from "zod";
 
-type Unit = {
-  monthly_rent: number;
-  date_available?: string;
-  square_footage: number;
-  unit_type: string;
-  notes: string;
-  floor?: number;
-  is_income_restricted?: boolean;
-};
-
 const responseSchema = z.object({
   json: z.object({
     units: z.array(
@@ -33,7 +23,7 @@ const responseSchema = z.object({
 });
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {

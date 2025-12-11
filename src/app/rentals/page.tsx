@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationTableRow } from "@/components/location-table-row";
+import { ScrapeAllButton } from "@/components/scrape-all-button";
 import { db } from "@/lib/db";
 import {
   locationsTable,
@@ -72,6 +73,9 @@ export default async function Locations() {
           <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Seattle Rental Locations
           </h1>
+          <div className="mt-4">
+            <ScrapeAllButton />
+          </div>
         </div>
 
         {/* Personal Lease Info */}
