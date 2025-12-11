@@ -71,7 +71,7 @@ export default async function Locations() {
       <div className="flex flex-col gap-4 max-w-6xl mx-auto">
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Seattle Rental Locations
+            Rental Locations
           </h1>
           <div className="mt-4">
             <ScrapeAllButton />
