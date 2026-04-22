@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -21,32 +21,58 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-// US Federal Tax Brackets for 2026 (Single Filer)
+const STANDARD_DEDUCTION_2026_SINGLE = 16100;
+const SOCIAL_SECURITY_WAGE_BASE_2026 = 184500;
+const SOCIAL_SECURITY_RATE = 0.062;
+const MEDICARE_RATE = 0.0145;
+const ADDITIONAL_MEDICARE_RATE = 0.009;
+const ADDITIONAL_MEDICARE_THRESHOLD_SINGLE = 200000;
+const WA_PFML_RATE = 0.00358;
+const WA_CARES_RATE = 0.0058;
+
+// US Federal Tax Brackets for 2026 (Single filer taxable income)
 const TAX_BRACKETS = [
   { min: 0, max: 12400, rate: 0.1 },
-  { min: 12401, max: 50400, rate: 0.12 },
-  { min: 50401, max: 105700, rate: 0.22 },
-  { min: 105701, max: 201775, rate: 0.24 },
-  { min: 201776, max: 256225, rate: 0.32 },
-  { min: 256226, max: 640600, rate: 0.35 },
-  { min: 640601, max: Number.POSITIVE_INFINITY, rate: 0.37 },
-];
+  { min: 12400, max: 50400, rate: 0.12 },
+  { min: 50400, max: 105700, rate: 0.22 },
+  { min: 105700, max: 201775, rate: 0.24 },
+  { min: 201775, max: 256225, rate: 0.32 },
+  { min: 256225, max: 640600, rate: 0.35 },
+  { min: 640600, max: Number.POSITIVE_INFINITY, rate: 0.37 },
+] as const;
 
-function calculateFederalTax(income: number): {
+type FederalTaxBracketBreakdown = {
+  label: string;
+  amount: number;
+};
+
+function calculateFederalTax(taxableIncome: number): {
   tax: number;
   effectiveRate: number;
+  breakdown: FederalTaxBracketBreakdown[];
 } {
   let tax = 0;
+  const breakdown: FederalTaxBracketBreakdown[] = [];
 
   for (const bracket of TAX_BRACKETS) {
-    if (income <= bracket.min) break;
+    if (taxableIncome <= bracket.min) break;
 
-    const taxableInThisBracket = Math.min(income, bracket.max) - bracket.min;
-    tax += taxableInThisBracket * bracket.rate;
+    const taxableInThisBracket =
+      Math.min(taxableIncome, bracket.max) - bracket.min;
+
+    if (taxableInThisBracket <= 0) continue;
+
+    const bracketTax = taxableInThisBracket * bracket.rate;
+    tax += bracketTax;
+
+    breakdown.push({
+      label: `${Math.round(bracket.rate * 100)}% bracket`,
+      amount: bracketTax,
+    });
   }
 
-  const effectiveRate = income > 0 ? tax / income : 0;
-  return { tax, effectiveRate };
+  const effectiveRate = taxableIncome > 0 ? tax / taxableIncome : 0;
+  return { tax, effectiveRate, breakdown };
 }
 
 const STORAGE_KEY = "income_expense_calculations";
@@ -73,6 +99,10 @@ type SavedCalculation = {
   recreation: number;
   clothing: number;
 };
+
+function toNumber(value: string): number {
+  return Number.parseFloat(value) || 0;
+}
 
 export default function Income() {
   const [rent, setRent] = useState<string>("");
@@ -101,6 +131,30 @@ export default function Income() {
   >([]);
   const [selectedCalculation, setSelectedCalculation] = useState<string>("");
 
+  const applyCalculation = (calculation: SavedCalculation) => {
+    setCalculationName(calculation.name);
+    setAnnualSalary(calculation.annualSalary.toString());
+    setRent(calculation.rent.toString());
+    setGroceries(calculation.groceries.toString());
+    setFoodOut(calculation.foodOut.toString());
+    setTravel(calculation.travel.toString());
+    setGas(calculation.gas.toString());
+    setInsurance(calculation.insurance.toString());
+    setBusiness(calculation.business.toString());
+    setGym(calculation.gym.toString());
+    setPersonal(calculation.personal.toString());
+    setTransport(calculation.transport.toString());
+    setElectric(calculation.electric.toString());
+    setInternet(calculation.internet.toString());
+    setOther(calculation.other.toString());
+    setCellPhone(calculation.cellPhone.toString());
+    setSubscriptions(calculation.subscriptions.toString());
+    setHaircuts(calculation.haircuts.toString());
+    setParking(calculation.parking.toString());
+    setRecreation(calculation.recreation.toString());
+    setClothing(calculation.clothing.toString());
+  };
+
   const loadSavedCalculations = (): SavedCalculation[] => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -108,148 +162,165 @@ export default function Income() {
     }
     return [];
   };
+
   const loadCalculation = (name: string) => {
     const calculation = savedCalculations.find((calc) => calc.name === name);
     if (calculation) {
-      setCalculationName(calculation.name);
-      setAnnualSalary(calculation.annualSalary.toString());
-      setRent(calculation.rent.toString());
-      setGroceries(calculation.groceries.toString());
-      setFoodOut(calculation.foodOut.toString());
-      setTravel(calculation.travel.toString());
-      setGas(calculation.gas.toString());
-      setInsurance(calculation.insurance.toString());
-      setBusiness(calculation.business.toString());
-      setGym(calculation.gym.toString());
-      setPersonal(calculation.personal.toString());
-      setTransport(calculation.transport.toString());
-      setElectric(calculation.electric.toString());
-      setInternet(calculation.internet.toString());
-      setOther(calculation.other.toString());
-      setCellPhone(calculation.cellPhone.toString());
-      setSubscriptions(calculation.subscriptions.toString());
-      setHaircuts(calculation.haircuts.toString());
-      setParking(calculation.parking.toString());
-      setRecreation(calculation.recreation.toString());
-      setClothing(calculation.clothing.toString());
+      applyCalculation(calculation);
+      setSelectedCalculation(calculation.name);
     }
   };
+
   const deleteCalculation = (name: string) => {
     const updatedCalculations = savedCalculations.filter(
       (calc) => calc.name !== name,
     );
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCalculations));
     setSavedCalculations(updatedCalculations);
+    if (selectedCalculation === name) {
+      setSelectedCalculation("");
+    }
   };
+
   const saveCalculation = () => {
     const newCalculation: SavedCalculation = {
       name: calculationName,
-      annualSalary: Number.parseFloat(annualSalary) || 0,
-      rent: Number.parseFloat(rent) || 0,
-      groceries: Number.parseFloat(groceries) || 0,
-      foodOut: Number.parseFloat(foodOut) || 0,
-      travel: Number.parseFloat(travel) || 0,
-      gas: Number.parseFloat(gas) || 0,
-      insurance: Number.parseFloat(insurance) || 0,
-      business: Number.parseFloat(business) || 0,
-      gym: Number.parseFloat(gym) || 0,
-      personal: Number.parseFloat(personal) || 0,
-      transport: Number.parseFloat(transport) || 0,
-      electric: Number.parseFloat(electric) || 0,
-      internet: Number.parseFloat(internet) || 0,
-      other: Number.parseFloat(other) || 0,
-      cellPhone: Number.parseFloat(cellPhone) || 0,
-      subscriptions: Number.parseFloat(subscriptions) || 0,
-      haircuts: Number.parseFloat(haircuts) || 0,
-      parking: Number.parseFloat(parking) || 0,
-      recreation: Number.parseFloat(recreation) || 0,
-      clothing: Number.parseFloat(clothing) || 0,
+      annualSalary: toNumber(annualSalary),
+      rent: toNumber(rent),
+      groceries: toNumber(groceries),
+      foodOut: toNumber(foodOut),
+      travel: toNumber(travel),
+      gas: toNumber(gas),
+      insurance: toNumber(insurance),
+      business: toNumber(business),
+      gym: toNumber(gym),
+      personal: toNumber(personal),
+      transport: toNumber(transport),
+      electric: toNumber(electric),
+      internet: toNumber(internet),
+      other: toNumber(other),
+      cellPhone: toNumber(cellPhone),
+      subscriptions: toNumber(subscriptions),
+      haircuts: toNumber(haircuts),
+      parking: toNumber(parking),
+      recreation: toNumber(recreation),
+      clothing: toNumber(clothing),
     };
+
     const updatedCalculations = [
       ...savedCalculations.filter((calc) => calc.name !== newCalculation.name),
       newCalculation,
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCalculations));
     setSavedCalculations(updatedCalculations);
+    setSelectedCalculation(newCalculation.name);
   };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount
   React.useEffect(() => {
     const calculations = loadSavedCalculations();
     setSavedCalculations(calculations);
-    // Load the first saved calculation if it exists
     if (calculations.length > 0) {
-      setCalculationName(calculations[0].name);
-      setAnnualSalary(calculations[0].annualSalary.toString());
-      setRent(calculations[0].rent.toString());
-      setGroceries(calculations[0].groceries.toString());
-      setFoodOut(calculations[0].foodOut.toString());
-      setTravel(calculations[0].travel.toString());
-      setGas(calculations[0].gas.toString());
-      setInsurance(calculations[0].insurance.toString());
-      setBusiness(calculations[0].business.toString());
-      setGym(calculations[0].gym.toString());
-      setPersonal(calculations[0].personal.toString());
-      setTransport(calculations[0].transport.toString());
-      setElectric(calculations[0].electric.toString());
-      setInternet(calculations[0].internet.toString());
-      setOther(calculations[0].other.toString());
-      setCellPhone(calculations[0].cellPhone.toString());
-      setSubscriptions(calculations[0].subscriptions.toString());
-      setHaircuts(calculations[0].haircuts.toString());
-      setParking(calculations[0].parking.toString());
-      setRecreation(calculations[0].recreation.toString());
-      setClothing(calculations[0].clothing.toString());
+      applyCalculation(calculations[0]);
       setSelectedCalculation(calculations[0].name);
     }
   }, []);
 
   const calculations = useMemo(() => {
-    const salary = Number.parseFloat(annualSalary) || 0;
+    const salary = toNumber(annualSalary);
     const totalExpenses =
-      (Number.parseFloat(rent) || 0) +
-      (Number.parseFloat(groceries) || 0) +
-      (Number.parseFloat(foodOut) || 0) +
-      (Number.parseFloat(travel) || 0) +
-      (Number.parseFloat(gas) || 0) +
-      (Number.parseFloat(insurance) || 0) +
-      (Number.parseFloat(business) || 0) +
-      (Number.parseFloat(gym) || 0) +
-      (Number.parseFloat(personal) || 0) +
-      (Number.parseFloat(transport) || 0) +
-      (Number.parseFloat(electric) || 0) +
-      (Number.parseFloat(internet) || 0) +
-      (Number.parseFloat(other) || 0) +
-      (Number.parseFloat(cellPhone) || 0) +
-      (Number.parseFloat(subscriptions) || 0) +
-      (Number.parseFloat(haircuts) || 0) +
-      (Number.parseFloat(parking) || 0) +
-      (Number.parseFloat(recreation) || 0) +
-      (Number.parseFloat(clothing) || 0);
+      toNumber(rent) +
+      toNumber(groceries) +
+      toNumber(foodOut) +
+      toNumber(travel) +
+      toNumber(gas) +
+      toNumber(insurance) +
+      toNumber(business) +
+      toNumber(gym) +
+      toNumber(personal) +
+      toNumber(transport) +
+      toNumber(electric) +
+      toNumber(internet) +
+      toNumber(other) +
+      toNumber(cellPhone) +
+      toNumber(subscriptions) +
+      toNumber(haircuts) +
+      toNumber(parking) +
+      toNumber(recreation) +
+      toNumber(clothing);
 
     if (salary <= 0) {
       return {
-        postTaxIncome: 0,
-        effectiveRate: 0,
-        monthlyTakeHome: 0,
-        biweeklyTakeHome: 0,
-        monthlyAfterExpenses: 0,
-        totalExpenses: 0,
+        grossSalary: 0,
+        standardDeduction: STANDARD_DEDUCTION_2026_SINGLE,
+        taxableIncome: 0,
+        federalTax: 0,
+        federalEffectiveRate: 0,
+        federalBreakdown: [] as FederalTaxBracketBreakdown[],
+        socialSecurity: 0,
+        medicare: 0,
+        pfml: 0,
+        waCares: 0,
+        totalTaxes: 0,
+        totalEffectiveRate: 0,
+        netAnnualPay: 0,
+        netMonthlyPay: 0,
+        netBiweeklyPay: 0,
+        taxesPerMonth: 0,
+        taxesPerBiweekly: 0,
+        monthlySavings: 0,
+        annualSavings: 0,
+        totalExpenses,
       };
     }
 
-    const { tax, effectiveRate } = calculateFederalTax(salary);
-    const postTaxIncome = salary - tax;
-    const monthlyTakeHome = postTaxIncome / 12;
-    const biweeklyTakeHome = postTaxIncome / 26;
-    const monthlyAfterExpenses = monthlyTakeHome - totalExpenses;
+    const standardDeduction = STANDARD_DEDUCTION_2026_SINGLE;
+    const taxableIncome = Math.max(0, salary - standardDeduction);
+    const {
+      tax: federalTax,
+      effectiveRate: federalEffectiveRate,
+      breakdown: federalBreakdown,
+    } = calculateFederalTax(taxableIncome);
+
+    const socialSecurity =
+      Math.min(salary, SOCIAL_SECURITY_WAGE_BASE_2026) * SOCIAL_SECURITY_RATE;
+    const medicare =
+      salary * MEDICARE_RATE +
+      Math.max(0, salary - ADDITIONAL_MEDICARE_THRESHOLD_SINGLE) *
+        ADDITIONAL_MEDICARE_RATE;
+    const pfml = salary * WA_PFML_RATE;
+    const waCares = salary * WA_CARES_RATE;
+
+    const totalTaxes = federalTax + socialSecurity + medicare + pfml + waCares;
+    const totalEffectiveRate = totalTaxes / salary;
+    const netAnnualPay = salary - totalTaxes;
+    const netMonthlyPay = netAnnualPay / 12;
+    const netBiweeklyPay = netAnnualPay / 26;
+    const taxesPerMonth = totalTaxes / 12;
+    const taxesPerBiweekly = totalTaxes / 26;
+    const monthlySavings = netMonthlyPay - totalExpenses;
+    const annualSavings = monthlySavings * 12;
 
     return {
-      postTaxIncome,
-      effectiveRate,
-      monthlyTakeHome,
-      biweeklyTakeHome,
-      monthlyAfterExpenses,
+      grossSalary: salary,
+      standardDeduction,
+      taxableIncome,
+      federalTax,
+      federalEffectiveRate,
+      federalBreakdown,
+      socialSecurity,
+      medicare,
+      pfml,
+      waCares,
+      totalTaxes,
+      totalEffectiveRate,
+      netAnnualPay,
+      netMonthlyPay,
+      netBiweeklyPay,
+      taxesPerMonth,
+      taxesPerBiweekly,
+      monthlySavings,
+      annualSavings,
       totalExpenses,
     };
   }, [
@@ -293,15 +364,14 @@ export default function Income() {
       <div className="flex flex-col gap-4 max-w-6xl mx-auto">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Income & Expense Calculator
+            Income and Expense Calculator
           </h1>
           <p className="text-muted-foreground">
-            Calculate your take-home pay and savings potential
+            Calculate your taxes, net pay, and savings potential
           </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Monthly Expenses Section */}
           <Card>
             <CardHeader>
               <CardTitle>Monthly Expenses</CardTitle>
@@ -317,7 +387,7 @@ export default function Income() {
                     <Input
                       id="rent"
                       type="number"
-                      placeholder="2,000"
+                      placeholder="2000"
                       value={rent}
                       onChange={(e) => setRent(e.target.value)}
                     />
@@ -348,7 +418,7 @@ export default function Income() {
                   </FieldContent>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="travel">Travel/Vacation</FieldLabel>
+                  <FieldLabel htmlFor="travel">Travel and Vacation</FieldLabel>
                   <FieldContent>
                     <Input
                       id="travel"
@@ -551,7 +621,6 @@ export default function Income() {
             </CardContent>
           </Card>
 
-          {/* Income Section */}
           <Card>
             <CardHeader>
               <CardTitle>Annual Income</CardTitle>
@@ -568,7 +637,7 @@ export default function Income() {
                   <Input
                     id="annual-salary"
                     type="number"
-                    placeholder="75,000"
+                    placeholder="75000"
                     value={annualSalary}
                     onChange={(e) => setAnnualSalary(e.target.value)}
                   />
@@ -578,128 +647,147 @@ export default function Income() {
           </Card>
         </div>
 
-        {/* Tax Brackets Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>2026 US Federal Tax Brackets (Single Filer)</CardTitle>
-            <CardDescription>
-              These are the current federal tax rates used in calculations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-2">
-              {TAX_BRACKETS.map((bracket) => (
-                <div key={bracket.min} className="flex justify-between text-sm">
-                  <span>
-                    {formatCurrency(bracket.min)} -{" "}
-                    {bracket.max === Number.POSITIVE_INFINITY
-                      ? "∞"
-                      : formatCurrency(bracket.max)}
-                  </span>
-                  <span className="font-medium">
-                    {formatPercentage(bracket.rate)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Results Section */}
-        {Number.parseFloat(annualSalary) > 0 && (
+        {toNumber(annualSalary) > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Financial Summary</CardTitle>
+              <CardTitle>Tax and Net Pay Summary (WA)</CardTitle>
               <CardDescription>
-                Based on your income and expenses
+                Income, deduction, tax breakdown, net pay, expenses, and savings
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Post-Tax Income</h3>
-                  <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(calculations.postTaxIncome)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Annually after federal taxes
-                  </p>
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <h3 className="text-base font-semibold">Income</h3>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Gross Salary</span>
+                    <span className="font-semibold">
+                      {formatCurrency(calculations.grossSalary)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Standard Deduction</span>
+                    <span className="font-semibold">
+                      -{formatCurrency(calculations.standardDeduction)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-t pt-2">
+                    <span className="font-medium">Taxable Income</span>
+                    <span className="font-bold">
+                      {formatCurrency(calculations.taxableIncome)}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Effective Tax Rate</h3>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {formatPercentage(calculations.effectiveRate)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Federal taxes only
-                  </p>
+                <div className="border-t pt-4 space-y-3">
+                  <h3 className="text-base font-semibold">Tax Breakdown (Annual)</h3>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Social Security</span>
+                    <span>-{formatCurrency(calculations.socialSecurity)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Medicare</span>
+                    <span>-{formatCurrency(calculations.medicare)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Paid Family and Medical Leave (WA)
+                    </span>
+                    <span>-{formatCurrency(calculations.pfml)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Long-Term Care (WA Cares)</span>
+                    <span>-{formatCurrency(calculations.waCares)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Federal Income Tax</span>
+                    <span>-{formatCurrency(calculations.federalTax)}</span>
+                  </div>
+                  {calculations.federalBreakdown.map((bracket) => (
+                    <div
+                      key={bracket.label}
+                      className="flex items-center justify-between text-xs text-muted-foreground pl-3"
+                    >
+                      <span>{bracket.label}</span>
+                      <span>-{formatCurrency(bracket.amount)}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between border-t pt-2">
+                    <span className="font-medium">Total Taxes</span>
+                    <span className="font-bold">
+                      -{formatCurrency(calculations.totalTaxes)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Effective Tax Rate</span>
+                    <span>{formatPercentage(calculations.totalEffectiveRate)}</span>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Monthly Take-Home</h3>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(calculations.monthlyTakeHome)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Monthly after taxes
-                  </p>
+                <div className="border-t pt-4 space-y-3">
+                  <h3 className="text-base font-semibold">Net Pay Breakdown</h3>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Net Annual Pay</span>
+                    <span className="font-semibold">
+                      {formatCurrency(calculations.netAnnualPay)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Per Month</span>
+                    <span>{formatCurrency(calculations.netMonthlyPay)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Per 2 Weeks</span>
+                    <span>{formatCurrency(calculations.netBiweeklyPay)}</span>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Bi-Weekly Pay</h3>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {formatCurrency(calculations.biweeklyTakeHome)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Every two weeks
-                  </p>
+                <div className="border-t pt-4 space-y-3">
+                  <h3 className="text-base font-semibold">Living Expenses</h3>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Per Month</span>
+                    <span className="font-semibold">
+                      {formatCurrency(calculations.totalExpenses)}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Monthly Savings</h3>
-                  <p
-                    className={`text-2xl font-bold ${calculations.monthlyAfterExpenses >= 0 ? "text-green-600" : "text-red-600"}`}
-                  >
-                    {formatCurrency(calculations.monthlyAfterExpenses)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    After expenses each month
-                  </p>
+                <div className="border-t pt-4 space-y-3">
+                  <h3 className="text-base font-semibold">Savings</h3>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Saved Per Month</span>
+                    <p
+                      className={`text-xl font-bold ${calculations.monthlySavings >= 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {formatCurrency(calculations.monthlySavings)}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Saved Per Year</span>
+                    <p
+                      className={`text-xl font-bold ${calculations.annualSavings >= 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {formatCurrency(calculations.annualSavings)}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Annual Savings</h3>
-                  <p
-                    className={`text-2xl font-bold ${calculations.monthlyAfterExpenses >= 0 ? "text-green-600" : "text-red-600"}`}
-                  >
-                    {formatCurrency(calculations.monthlyAfterExpenses * 12)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Potential yearly savings
-                  </p>
-                </div>
+                {calculations.monthlySavings < 0 && (
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-red-800 dark:text-red-200 font-medium">
+                      Your expenses exceed your monthly net pay by {" "}
+                      {formatCurrency(Math.abs(calculations.monthlySavings))}.
+                    </p>
+                  </div>
+                )}
               </div>
-
-              {calculations.monthlyAfterExpenses < 0 && (
-                <div className="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-red-800 dark:text-red-200 font-medium">
-                    ⚠️ Your expenses exceed your take-home income by{" "}
-                    {formatCurrency(
-                      Math.abs(calculations.monthlyAfterExpenses),
-                    )}{" "}
-                    per month.
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
 
-        {/* Save and load section */}
         <Card>
           <CardHeader>
-            <CardTitle>Save & Load Calculations</CardTitle>
+            <CardTitle>Save and Load Calculations</CardTitle>
             <CardDescription>
               Save your income and expense data for future reference
             </CardDescription>
@@ -732,8 +820,9 @@ export default function Income() {
             </div>
             <div className="mt-4 flex flex-row flex-nowrap gap-2">
               <Select
-                onValueChange={(e) => {
-                  setSelectedCalculation(e);
+                value={selectedCalculation}
+                onValueChange={(value) => {
+                  setSelectedCalculation(value);
                 }}
               >
                 <SelectTrigger className="w-full">
