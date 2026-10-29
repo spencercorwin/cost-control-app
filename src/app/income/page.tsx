@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,6 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,9 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
+import React, { useMemo, useState } from "react";
 
 const STANDARD_DEDUCTION_2026_SINGLE = 16100;
 const SOCIAL_SECURITY_WAGE_BASE_2026 = 184500;
@@ -76,89 +77,118 @@ function calculateFederalTax(taxableIncome: number): {
 }
 
 const STORAGE_KEY = "income_expense_calculations";
+
+const EXPENSE_ROWS = [
+  [
+    { key: "rent", label: "Rent", placeholder: "2000" },
+    { key: "parking", label: "Parking", placeholder: "100" },
+  ],
+  [
+    { key: "groceries", label: "Groceries", placeholder: "500" },
+    { key: "restaurants", label: "Restaurants", placeholder: "300" },
+  ],
+  [
+    { key: "forMe", label: "For Me", placeholder: "100" },
+    { key: "recreation", label: "Recreation", placeholder: "150" },
+    { key: "gym", label: "Gym", placeholder: "50" },
+    { key: "forHome", label: "For Home", placeholder: "100" },
+  ],
+  [
+    { key: "electric", label: "Electric", placeholder: "100" },
+    { key: "internet", label: "Internet", placeholder: "80" },
+    { key: "cellPhone", label: "Cell Phone", placeholder: "60" },
+    { key: "subscriptions", label: "Subscriptions", placeholder: "50" },
+  ],
+  [
+    { key: "gas", label: "Gas", placeholder: "150" },
+    { key: "transport", label: "Transport", placeholder: "100" },
+    { key: "insurance", label: "Insurance", placeholder: "200" },
+    { key: "travel", label: "Travel and Vacation", placeholder: "200" },
+  ],
+  [
+    { key: "haircuts", label: "Haircuts", placeholder: "40" },
+    { key: "clothing", label: "Clothing", placeholder: "100" },
+    { key: "other", label: "Other", placeholder: "100" },
+  ],
+] as const;
+
+const ROW_GRID_CLASSES: Record<number, string> = {
+  2: "grid-cols-2",
+  3: "grid-cols-2 md:grid-cols-3",
+  4: "grid-cols-2 md:grid-cols-4",
+};
+
+type ExpenseKey = (typeof EXPENSE_ROWS)[number][number]["key"];
+const EXPENSE_KEYS: ExpenseKey[] = EXPENSE_ROWS.flat().map(
+  (field) => field.key,
+);
+
+type Expenses = Record<ExpenseKey, string>;
+
 type SavedCalculation = {
   name: string;
   annualSalary: number;
-  rent: number;
-  groceries: number;
-  foodOut: number;
-  travel: number;
-  gas: number;
-  insurance: number;
-  business: number;
-  gym: number;
-  personal: number;
-  transport: number;
-  electric: number;
-  internet: number;
-  other: number;
-  cellPhone: number;
-  subscriptions: number;
-  haircuts: number;
-  parking: number;
-  recreation: number;
-  clothing: number;
+} & Record<ExpenseKey, number>;
+
+// Calculations saved before fields were renamed (foodOut -> restaurants,
+// personal -> forMe) or added (forHome) may be missing keys.
+type StoredCalculation = Partial<SavedCalculation> & {
+  name: string;
+  foodOut?: number;
+  personal?: number;
 };
+
+function normalizeCalculation(stored: StoredCalculation): SavedCalculation {
+  const expenses = Object.fromEntries(
+    EXPENSE_KEYS.map((key) => [key, stored[key] ?? 0]),
+  ) as Record<ExpenseKey, number>;
+  return {
+    ...expenses,
+    restaurants: stored.restaurants ?? stored.foodOut ?? 0,
+    forMe: stored.forMe ?? stored.personal ?? 0,
+    name: stored.name,
+    annualSalary: stored.annualSalary ?? 0,
+  };
+}
+
+const EMPTY_EXPENSES = Object.fromEntries(
+  EXPENSE_KEYS.map((key) => [key, ""]),
+) as Expenses;
 
 function toNumber(value: string): number {
   return Number.parseFloat(value) || 0;
 }
 
 export default function Income() {
-  const [rent, setRent] = useState<string>("");
-  const [groceries, setGroceries] = useState<string>("");
-  const [foodOut, setFoodOut] = useState<string>("");
-  const [travel, setTravel] = useState<string>("");
-  const [gas, setGas] = useState<string>("");
-  const [insurance, setInsurance] = useState<string>("");
-  const [business, setBusiness] = useState<string>("");
-  const [gym, setGym] = useState<string>("");
-  const [personal, setPersonal] = useState<string>("");
-  const [transport, setTransport] = useState<string>("");
-  const [electric, setElectric] = useState<string>("");
-  const [internet, setInternet] = useState<string>("");
-  const [other, setOther] = useState<string>("");
-  const [cellPhone, setCellPhone] = useState<string>("");
-  const [subscriptions, setSubscriptions] = useState<string>("");
-  const [haircuts, setHaircuts] = useState<string>("");
-  const [parking, setParking] = useState<string>("");
-  const [recreation, setRecreation] = useState<string>("");
-  const [clothing, setClothing] = useState<string>("");
+  const [expenses, setExpenses] = useState<Expenses>(EMPTY_EXPENSES);
   const [annualSalary, setAnnualSalary] = useState<string>("");
   const [calculationName, setCalculationName] = useState<string>("");
   const [savedCalculations, setSavedCalculations] = useState<
     SavedCalculation[]
   >([]);
   const [selectedCalculation, setSelectedCalculation] = useState<string>("");
+  const [showTaxDetails, setShowTaxDetails] = useState(false);
+
+  const setExpense = (key: ExpenseKey, value: string) => {
+    setExpenses((prev) => ({ ...prev, [key]: value }));
+  };
 
   const applyCalculation = (calculation: SavedCalculation) => {
     setCalculationName(calculation.name);
     setAnnualSalary(calculation.annualSalary.toString());
-    setRent(calculation.rent.toString());
-    setGroceries(calculation.groceries.toString());
-    setFoodOut(calculation.foodOut.toString());
-    setTravel(calculation.travel.toString());
-    setGas(calculation.gas.toString());
-    setInsurance(calculation.insurance.toString());
-    setBusiness(calculation.business.toString());
-    setGym(calculation.gym.toString());
-    setPersonal(calculation.personal.toString());
-    setTransport(calculation.transport.toString());
-    setElectric(calculation.electric.toString());
-    setInternet(calculation.internet.toString());
-    setOther(calculation.other.toString());
-    setCellPhone(calculation.cellPhone.toString());
-    setSubscriptions(calculation.subscriptions.toString());
-    setHaircuts(calculation.haircuts.toString());
-    setParking(calculation.parking.toString());
-    setRecreation(calculation.recreation.toString());
-    setClothing(calculation.clothing.toString());
+    setExpenses(
+      Object.fromEntries(
+        EXPENSE_KEYS.map((key) => [key, calculation[key].toString()]),
+      ) as Expenses,
+    );
   };
 
   const loadSavedCalculations = (): SavedCalculation[] => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      return JSON.parse(saved);
+      return (JSON.parse(saved) as StoredCalculation[]).map(
+        normalizeCalculation,
+      );
     }
     return [];
   };
@@ -184,27 +214,11 @@ export default function Income() {
 
   const saveCalculation = () => {
     const newCalculation: SavedCalculation = {
+      ...(Object.fromEntries(
+        EXPENSE_KEYS.map((key) => [key, toNumber(expenses[key])]),
+      ) as Record<ExpenseKey, number>),
       name: calculationName,
       annualSalary: toNumber(annualSalary),
-      rent: toNumber(rent),
-      groceries: toNumber(groceries),
-      foodOut: toNumber(foodOut),
-      travel: toNumber(travel),
-      gas: toNumber(gas),
-      insurance: toNumber(insurance),
-      business: toNumber(business),
-      gym: toNumber(gym),
-      personal: toNumber(personal),
-      transport: toNumber(transport),
-      electric: toNumber(electric),
-      internet: toNumber(internet),
-      other: toNumber(other),
-      cellPhone: toNumber(cellPhone),
-      subscriptions: toNumber(subscriptions),
-      haircuts: toNumber(haircuts),
-      parking: toNumber(parking),
-      recreation: toNumber(recreation),
-      clothing: toNumber(clothing),
     };
 
     const updatedCalculations = [
@@ -228,26 +242,10 @@ export default function Income() {
 
   const calculations = useMemo(() => {
     const salary = toNumber(annualSalary);
-    const totalExpenses =
-      toNumber(rent) +
-      toNumber(groceries) +
-      toNumber(foodOut) +
-      toNumber(travel) +
-      toNumber(gas) +
-      toNumber(insurance) +
-      toNumber(business) +
-      toNumber(gym) +
-      toNumber(personal) +
-      toNumber(transport) +
-      toNumber(electric) +
-      toNumber(internet) +
-      toNumber(other) +
-      toNumber(cellPhone) +
-      toNumber(subscriptions) +
-      toNumber(haircuts) +
-      toNumber(parking) +
-      toNumber(recreation) +
-      toNumber(clothing);
+    const totalExpenses = EXPENSE_KEYS.reduce(
+      (sum, key) => sum + toNumber(expenses[key]),
+      0,
+    );
 
     if (salary <= 0) {
       return {
@@ -323,28 +321,7 @@ export default function Income() {
       annualSavings,
       totalExpenses,
     };
-  }, [
-    annualSalary,
-    rent,
-    groceries,
-    foodOut,
-    travel,
-    gas,
-    insurance,
-    business,
-    gym,
-    personal,
-    transport,
-    electric,
-    internet,
-    other,
-    cellPhone,
-    subscriptions,
-    haircuts,
-    parking,
-    recreation,
-    clothing,
-  ]);
+  }, [annualSalary, expenses]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -371,281 +348,74 @@ export default function Income() {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Monthly Expenses</CardTitle>
-              <CardDescription>
-                Enter your estimated monthly expenses by category
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="rent">Rent</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="rent"
-                      type="number"
-                      placeholder="2000"
-                      value={rent}
-                      onChange={(e) => setRent(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="groceries">Groceries</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="groceries"
-                      type="number"
-                      placeholder="500"
-                      value={groceries}
-                      onChange={(e) => setGroceries(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="food-out">Food Out</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="food-out"
-                      type="number"
-                      placeholder="300"
-                      value={foodOut}
-                      onChange={(e) => setFoodOut(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="travel">Travel and Vacation</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="travel"
-                      type="number"
-                      placeholder="200"
-                      value={travel}
-                      onChange={(e) => setTravel(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="gas">Gas</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="gas"
-                      type="number"
-                      placeholder="150"
-                      value={gas}
-                      onChange={(e) => setGas(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="insurance">Insurance</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="insurance"
-                      type="number"
-                      placeholder="200"
-                      value={insurance}
-                      onChange={(e) => setInsurance(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="business">Business</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="business"
-                      type="number"
-                      placeholder="100"
-                      value={business}
-                      onChange={(e) => setBusiness(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="gym">Gym</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="gym"
-                      type="number"
-                      placeholder="50"
-                      value={gym}
-                      onChange={(e) => setGym(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="personal">Personal</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="personal"
-                      type="number"
-                      placeholder="100"
-                      value={personal}
-                      onChange={(e) => setPersonal(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="transport">Transport</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="transport"
-                      type="number"
-                      placeholder="100"
-                      value={transport}
-                      onChange={(e) => setTransport(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="electric">Electric</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="electric"
-                      type="number"
-                      placeholder="100"
-                      value={electric}
-                      onChange={(e) => setElectric(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="internet">Internet</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="internet"
-                      type="number"
-                      placeholder="80"
-                      value={internet}
-                      onChange={(e) => setInternet(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="cell-phone">Cell Phone</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="cell-phone"
-                      type="number"
-                      placeholder="60"
-                      value={cellPhone}
-                      onChange={(e) => setCellPhone(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="subscriptions">Subscriptions</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="subscriptions"
-                      type="number"
-                      placeholder="50"
-                      value={subscriptions}
-                      onChange={(e) => setSubscriptions(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="haircuts">Haircuts</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="haircuts"
-                      type="number"
-                      placeholder="40"
-                      value={haircuts}
-                      onChange={(e) => setHaircuts(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="parking">Parking</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="parking"
-                      type="number"
-                      placeholder="100"
-                      value={parking}
-                      onChange={(e) => setParking(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="recreation">Recreation</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="recreation"
-                      type="number"
-                      placeholder="150"
-                      value={recreation}
-                      onChange={(e) => setRecreation(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="clothing">Clothing</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="clothing"
-                      type="number"
-                      placeholder="100"
-                      value={clothing}
-                      onChange={(e) => setClothing(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="other">Other</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="other"
-                      type="number"
-                      placeholder="100"
-                      value={other}
-                      onChange={(e) => setOther(e.target.value)}
-                    />
-                  </FieldContent>
-                </Field>
-              </div>
-              <div className="pt-4 mt-4 border-t">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold">Total Monthly Expenses:</span>
-                  <span className="text-lg font-bold">
-                    {formatCurrency(calculations.totalExpenses)}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Annual Income</CardTitle>
+            <CardDescription>
+              Enter your annual pre-tax salary for tax calculations
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Field>
+              <FieldLabel htmlFor="annual-salary">
+                Annual Pre-Tax Salary
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  id="annual-salary"
+                  type="number"
+                  placeholder="75000"
+                  value={annualSalary}
+                  onChange={(e) => setAnnualSalary(e.target.value)}
+                />
+              </FieldContent>
+            </Field>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Annual Income</CardTitle>
-              <CardDescription>
-                Enter your annual pre-tax salary for tax calculations
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Field>
-                <FieldLabel htmlFor="annual-salary">
-                  Annual Pre-Tax Salary
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="annual-salary"
-                    type="number"
-                    placeholder="75000"
-                    value={annualSalary}
-                    onChange={(e) => setAnnualSalary(e.target.value)}
-                  />
-                </FieldContent>
-              </Field>
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Expenses</CardTitle>
+            <CardDescription>
+              Enter your estimated monthly expenses by category
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {EXPENSE_ROWS.map((row) => (
+                <div
+                  key={row[0].key}
+                  className={`grid gap-3 ${ROW_GRID_CLASSES[row.length]}`}
+                >
+                  {row.map((field) => (
+                    <Field key={field.key}>
+                      <FieldLabel htmlFor={field.key}>{field.label}</FieldLabel>
+                      <FieldContent>
+                        <Input
+                          id={field.key}
+                          type="number"
+                          placeholder={field.placeholder}
+                          value={expenses[field.key]}
+                          onChange={(e) =>
+                            setExpense(field.key, e.target.value)
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="pt-4 mt-4 border-t">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold">Total Monthly Expenses:</span>
+                <span className="text-lg font-bold">
+                  {formatCurrency(calculations.totalExpenses)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {toNumber(annualSalary) > 0 && (
           <Card>
@@ -657,77 +427,119 @@ export default function Income() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                <div className="space-y-3">
-                  <h3 className="text-base font-semibold">Income</h3>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Gross Salary</span>
-                    <span className="font-semibold">
-                      {formatCurrency(calculations.grossSalary)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Standard Deduction</span>
-                    <span className="font-semibold">
-                      -{formatCurrency(calculations.standardDeduction)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between border-t pt-2">
-                    <span className="font-medium">Taxable Income</span>
-                    <span className="font-bold">
-                      {formatCurrency(calculations.taxableIncome)}
-                    </span>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTaxDetails((prev) => !prev)}
+                  aria-expanded={showTaxDetails}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <span className="flex items-center gap-2 text-base font-semibold">
+                    <ChevronDown
+                      className={`size-4 transition-transform ${showTaxDetails ? "" : "-rotate-90"}`}
+                    />
+                    Income and Taxes
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    -{formatCurrency(calculations.totalTaxes)} (
+                    {formatPercentage(calculations.totalEffectiveRate)})
+                  </span>
+                </button>
 
-                <div className="border-t pt-4 space-y-3">
-                  <h3 className="text-base font-semibold">Tax Breakdown (Annual)</h3>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Social Security</span>
-                    <span>-{formatCurrency(calculations.socialSecurity)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Medicare</span>
-                    <span>-{formatCurrency(calculations.medicare)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Paid Family and Medical Leave (WA)
-                    </span>
-                    <span>-{formatCurrency(calculations.pfml)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Long-Term Care (WA Cares)</span>
-                    <span>-{formatCurrency(calculations.waCares)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Federal Income Tax</span>
-                    <span>-{formatCurrency(calculations.federalTax)}</span>
-                  </div>
-                  {calculations.federalBreakdown.map((bracket) => (
-                    <div
-                      key={bracket.label}
-                      className="flex items-center justify-between text-xs text-muted-foreground pl-3"
-                    >
-                      <span>{bracket.label}</span>
-                      <span>-{formatCurrency(bracket.amount)}</span>
+                {showTaxDetails && (
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <h3 className="text-base font-semibold">Income</h3>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Gross Salary
+                        </span>
+                        <span className="font-semibold">
+                          {formatCurrency(calculations.grossSalary)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Standard Deduction
+                        </span>
+                        <span className="font-semibold">
+                          -{formatCurrency(calculations.standardDeduction)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between border-t pt-2">
+                        <span className="font-medium">Taxable Income</span>
+                        <span className="font-bold">
+                          {formatCurrency(calculations.taxableIncome)}
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                  <div className="flex items-center justify-between border-t pt-2">
-                    <span className="font-medium">Total Taxes</span>
-                    <span className="font-bold">
-                      -{formatCurrency(calculations.totalTaxes)}
-                    </span>
+
+                    <div className="border-t pt-4 space-y-3">
+                      <h3 className="text-base font-semibold">
+                        Tax Breakdown (Annual)
+                      </h3>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Social Security
+                        </span>
+                        <span>
+                          -{formatCurrency(calculations.socialSecurity)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Medicare</span>
+                        <span>-{formatCurrency(calculations.medicare)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Paid Family and Medical Leave (WA)
+                        </span>
+                        <span>-{formatCurrency(calculations.pfml)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Long-Term Care (WA Cares)
+                        </span>
+                        <span>-{formatCurrency(calculations.waCares)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Federal Income Tax
+                        </span>
+                        <span>-{formatCurrency(calculations.federalTax)}</span>
+                      </div>
+                      {calculations.federalBreakdown.map((bracket) => (
+                        <div
+                          key={bracket.label}
+                          className="flex items-center justify-between text-xs text-muted-foreground pl-3"
+                        >
+                          <span>{bracket.label}</span>
+                          <span>-{formatCurrency(bracket.amount)}</span>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between border-t pt-2">
+                        <span className="font-medium">Total Taxes</span>
+                        <span className="font-bold">
+                          -{formatCurrency(calculations.totalTaxes)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Effective Tax Rate
+                        </span>
+                        <span>
+                          {formatPercentage(calculations.totalEffectiveRate)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Effective Tax Rate</span>
-                    <span>{formatPercentage(calculations.totalEffectiveRate)}</span>
-                  </div>
-                </div>
+                )}
 
                 <div className="border-t pt-4 space-y-3">
                   <h3 className="text-base font-semibold">Net Pay Breakdown</h3>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Net Annual Pay</span>
+                    <span className="text-muted-foreground">
+                      Net Annual Pay
+                    </span>
                     <span className="font-semibold">
                       {formatCurrency(calculations.netAnnualPay)}
                     </span>
@@ -755,7 +567,9 @@ export default function Income() {
                 <div className="border-t pt-4 space-y-3">
                   <h3 className="text-base font-semibold">Savings</h3>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Saved Per Month</span>
+                    <span className="text-muted-foreground">
+                      Saved Per Month
+                    </span>
                     <p
                       className={`text-xl font-bold ${calculations.monthlySavings >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
@@ -763,7 +577,9 @@ export default function Income() {
                     </p>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Saved Per Year</span>
+                    <span className="text-muted-foreground">
+                      Saved Per Year
+                    </span>
                     <p
                       className={`text-xl font-bold ${calculations.annualSavings >= 0 ? "text-green-600" : "text-red-600"}`}
                     >
@@ -775,7 +591,7 @@ export default function Income() {
                 {calculations.monthlySavings < 0 && (
                   <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                     <p className="text-red-800 dark:text-red-200 font-medium">
-                      Your expenses exceed your monthly net pay by {" "}
+                      Your expenses exceed your monthly net pay by{" "}
                       {formatCurrency(Math.abs(calculations.monthlySavings))}.
                     </p>
                   </div>
